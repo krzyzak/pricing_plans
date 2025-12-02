@@ -63,7 +63,7 @@ module PricingPlans
     # in their own ApplicationController to customize redirects/flash.
     # Receives the PricingPlans::Result for the blocked check.
     def handle_pricing_plans_limit_blocked(result)
-      message = result&.message || "Plan limit reached"
+      message = result&.message || I18n.t("pricing_plans.controller.plan_limit_reached", default: "Plan limit reached")
       redirect_target = (result&.metadata || {})[:redirect_to]
 
       if html_request?

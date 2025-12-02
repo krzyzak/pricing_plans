@@ -145,17 +145,17 @@ module PricingPlans
 
     # Derive a human price label for a plan
     def plan_price_label_for(plan)
-      return "Free" if plan.price && plan.price.to_i.zero?
+      return I18n.t("pricing_plans.price_labels.free", default: "Free") if plan.price && plan.price.to_i.zero?
       return plan.price_string if plan.price_string
-      return "$#{plan.price}/mo" if plan.price
-      return "Contact" if plan.stripe_price || plan.price.nil?
+      return I18n.t("pricing_plans.price_labels.monthly", price: plan.price, default: "$#{plan.price}/mo") if plan.price
+      return I18n.t("pricing_plans.price_labels.contact", default: "Contact") if plan.stripe_price || plan.price.nil?
       nil
     end
 
     # Minimal noun resolver for human messages. Defaults to "limit" to match
     # expected copy in tests and docs. Host apps may override this method.
     def noun_for(limit_key)
-      "limit"
+      I18n.t("pricing_plans.default_noun", default: "limit")
     end
 
     # UI-neutral status helpers for building settings/usage UIs
@@ -420,11 +420,11 @@ module PricingPlans
     # Human title for overall banner based on severity
     def summary_title_for(severity)
       case severity
-      when :blocked then "Plan limit reached"
-      when :grace   then "Over limit — grace active"
-      when :at_limit then "At your plan limit"
-      when :warning then "Approaching plan limit"
-      else "All good"
+      when :blocked then I18n.t("pricing_plans.summary_titles.blocked", default: "Plan limit reached")
+      when :grace   then I18n.t("pricing_plans.summary_titles.grace", default: "Over limit — grace active")
+      when :at_limit then I18n.t("pricing_plans.summary_titles.at_limit", default: "At your plan limit")
+      when :warning then I18n.t("pricing_plans.summary_titles.warning", default: "Approaching plan limit")
+      else I18n.t("pricing_plans.summary_titles.ok", default: "All good")
       end
     end
 
@@ -450,18 +450,27 @@ module PricingPlans
       end
       noun = affected.size == 1 ? "plan limit" : "plan limits"
 
+      has_have = affected.size == 1 ? "has" : "have"
       case sev
       when :blocked
-        "Your #{noun} for #{keys_list} #{affected.size == 1 ? "has" : "have"} been exceeded. Please upgrade to continue."
+        I18n.t("pricing_plans.summary_messages.blocked",
+          noun: noun, keys_list: keys_list, has_have: has_have,
+          default: "Your #{noun} for #{keys_list} #{has_have} been exceeded. Please upgrade to continue.")
       when :grace
         # If any grace ends_at is present, show the earliest
         grace_end = keys.map { |k| GraceManager.grace_ends_at(plan_owner, k) }.compact.min
-        suffix = grace_end ? ", grace active until #{grace_end}" : ""
-        "You are over your #{noun} for #{keys_list}#{suffix}. Please upgrade to avoid service disruption."
+        suffix = grace_end ? I18n.t("pricing_plans.summary_messages.grace_suffix", grace_end: grace_end, default: ", grace active until #{grace_end}") : ""
+        I18n.t("pricing_plans.summary_messages.grace",
+          noun: noun, keys_list: keys_list, suffix: suffix,
+          default: "You are over your #{noun} for #{keys_list}#{suffix}. Please upgrade to avoid service disruption.")
       when :at_limit
-        "You have reached your #{noun} for #{keys_list}."
+        I18n.t("pricing_plans.summary_messages.at_limit",
+          noun: noun, keys_list: keys_list,
+          default: "You have reached your #{noun} for #{keys_list}.")
       else # :warning
-        "You are approaching your #{noun} for #{keys_list}."
+        I18n.t("pricing_plans.summary_messages.warning",
+          noun: noun, keys_list: keys_list,
+          default: "You are approaching your #{noun} for #{keys_list}.")
       end
     end
 
@@ -517,31 +526,48 @@ module PricingPlans
         "limit"
       end
 
+      human_limit_key = limit_key.to_s.humanize.downcase
       case severity
       when :blocked
         if limit_amount.is_a?(Numeric)
-          "You've gone over your #{noun} for #{limit_key.to_s.humanize.downcase} (#{current_usage}/#{limit_amount}). Please upgrade your plan."
+          I18n.t("pricing_plans.messages.blocked.with_usage",
+            noun: noun, limit_key: human_limit_key, current_usage: current_usage, limit_amount: limit_amount,
+            default: "You've gone over your #{noun} for #{human_limit_key} (#{current_usage}/#{limit_amount}). Please upgrade your plan.")
         else
-          "You've gone over your #{noun} for #{limit_key.to_s.humanize.downcase}. Please upgrade your plan."
+          I18n.t("pricing_plans.messages.blocked.without_usage",
+            noun: noun, limit_key: human_limit_key,
+            default: "You've gone over your #{noun} for #{human_limit_key}. Please upgrade your plan.")
         end
       when :grace
-        deadline = grace_ends_at ? ", and your grace period ends #{grace_ends_at.strftime('%B %d at %I:%M%p')}" : ""
+        deadline = grace_ends_at ? I18n.t("pricing_plans.messages.grace.deadline", grace_ends_at: grace_ends_at.strftime("%B %d at %I:%M%p"), default: ", and your grace period ends #{grace_ends_at.strftime('%B %d at %I:%M%p')}") : ""
         if limit_amount.is_a?(Numeric)
-          "Heads up! You’re currently over your #{noun} for #{limit_key.to_s.humanize.downcase} (#{current_usage}/#{limit_amount})#{deadline}. Please upgrade soon to avoid any interruptions."
+          I18n.t("pricing_plans.messages.grace.with_usage",
+            noun: noun, limit_key: human_limit_key, current_usage: current_usage, limit_amount: limit_amount, deadline: deadline,
+            default: "Heads up! You’re currently over your #{noun} for #{human_limit_key} (#{current_usage}/#{limit_amount})#{deadline}. Please upgrade soon to avoid any interruptions.")
         else
-          "Heads up! You’re currently over your #{noun} for #{limit_key.to_s.humanize.downcase}#{deadline}. Please upgrade soon to avoid any interruptions."
+          I18n.t("pricing_plans.messages.grace.without_usage",
+            noun: noun, limit_key: human_limit_key, deadline: deadline,
+            default: "Heads up! You’re currently over your #{noun} for #{human_limit_key}#{deadline}. Please upgrade soon to avoid any interruptions.")
         end
       when :at_limit
         if limit_amount.is_a?(Numeric)
-          "You’ve reached your #{noun} for #{limit_key.to_s.humanize.downcase} (#{current_usage}/#{limit_amount}). Upgrade your plan to unlock more."
+          I18n.t("pricing_plans.messages.at_limit.with_usage",
+            noun: noun, limit_key: human_limit_key, current_usage: current_usage, limit_amount: limit_amount,
+            default: "You've reached your #{noun} for #{human_limit_key} (#{current_usage}/#{limit_amount}). Upgrade your plan to unlock more.")
         else
-          "You’re at the maximum allowed for #{limit_key.to_s.humanize.downcase}. Want more? Consider upgrading your plan."
+          I18n.t("pricing_plans.messages.at_limit.without_usage",
+            limit_key: human_limit_key,
+            default: "You’re at the maximum allowed for #{human_limit_key}. Want more? Consider upgrading your plan.")
         end
       else # :warning
         if limit_amount.is_a?(Numeric)
-          "You’re getting close to your #{noun} for #{limit_key.to_s.humanize.downcase} (#{current_usage}/#{limit_amount}). Keep an eye on your usage, or upgrade your plan now to stay ahead."
+          I18n.t("pricing_plans.messages.warning.with_usage",
+            noun: noun, limit_key: human_limit_key, current_usage: current_usage, limit_amount: limit_amount,
+            default: "You’re getting close to your #{noun} for #{human_limit_key} (#{current_usage}/#{limit_amount}). Keep an eye on your usage, or upgrade your plan now to stay ahead.")
         else
-          "You’re getting close to your #{noun} for #{limit_key.to_s.humanize.downcase}. Keep an eye on your usage, or upgrade your plan now to stay ahead."
+          I18n.t("pricing_plans.messages.warning.without_usage",
+            noun: noun, limit_key: human_limit_key,
+            default: "You’re getting close to your #{noun} for #{human_limit_key}. Keep an eye on your usage, or upgrade your plan now to stay ahead.")
         end
       end
     end
@@ -583,7 +609,7 @@ module PricingPlans
       cfg = configuration
       url = cfg.default_cta_url
       url ||= (cfg.redirect_on_blocked_limit.is_a?(String) ? cfg.redirect_on_blocked_limit : nil)
-      text = cfg.default_cta_text.presence || "View Plans"
+      text = cfg.default_cta_text.presence || I18n.t("pricing_plans.cta.view_plans", default: "View Plans")
       { text: text, url: url }
     end
 
@@ -608,11 +634,12 @@ module PricingPlans
       msg = message_for(plan_owner, limit_key)
       over = overage_for(plan_owner, limit_key)
       cta  = cta_for_upgrade(plan_owner)
+      human_limit_key = limit_key.to_s.humanize.downcase
       titles = {
-        warning: "Approaching Limit",
-        at_limit: "You've reached your #{limit_key.to_s.humanize.downcase} limit",
-        grace:   "Limit for #{limit_key.to_s.humanize.downcase} exceeded (in grace period)",
-        blocked: "Cannot create more #{limit_key.to_s.humanize.downcase}"
+        warning: I18n.t("pricing_plans.alert_titles.warning", default: "Approaching Limit"),
+        at_limit: I18n.t("pricing_plans.alert_titles.at_limit", limit_key: human_limit_key, default: "You've reached your #{human_limit_key} limit"),
+        grace:   I18n.t("pricing_plans.alert_titles.grace", limit_key: human_limit_key, default: "Limit for #{human_limit_key} exceeded (in grace period)"),
+        blocked: I18n.t("pricing_plans.alert_titles.blocked", limit_key: human_limit_key, default: "Cannot create more #{human_limit_key}")
       }
       {
         visible?: true,

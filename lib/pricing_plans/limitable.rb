@@ -206,7 +206,7 @@ module PricingPlans
                   return
                 when :block_usage, :grace_then_block
                   if limit_config[:after_limit] == :block_usage || GraceManager.should_block?(plan_owner_instance, limit_key)
-                    message = error_after_limit || "Cannot create #{self.class.name.downcase}: #{limit_key} limit exceeded"
+                    message = error_after_limit || I18n.t("pricing_plans.limitable.cannot_create", model: self.class.name.downcase, limit_key: limit_key, default: "Cannot create #{self.class.name.downcase}: #{limit_key} limit exceeded")
                     errors.add(:base, message)
                   end
                 end
@@ -220,7 +220,7 @@ module PricingPlans
                   return
                 when :block_usage, :grace_then_block
                   if limit_config[:after_limit] == :block_usage || GraceManager.should_block?(plan_owner_instance, limit_key)
-                    message = error_after_limit || "Cannot create #{self.class.name.downcase}: #{limit_key} limit exceeded for this period"
+                    message = error_after_limit || I18n.t("pricing_plans.limitable.cannot_create_period", model: self.class.name.downcase, limit_key: limit_key, default: "Cannot create #{self.class.name.downcase}: #{limit_key} limit exceeded for this period")
                     errors.add(:base, message)
                   end
                 end

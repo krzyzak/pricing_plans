@@ -191,12 +191,12 @@ module PricingPlans
 
       # If no limit is configured, allow the action
       unless limit_config
-        return Result.within("No limit configured for #{limit_key}")
+        return Result.within(I18n.t("pricing_plans.controller.no_limit_configured", limit_key: limit_key, default: "No limit configured for #{limit_key}"))
       end
 
       # Check if unlimited
       if limit_config[:to] == :unlimited
-        return Result.within("Unlimited #{limit_key}")
+        return Result.within(I18n.t("pricing_plans.controller.unlimited", limit_key: limit_key, default: "Unlimited #{limit_key}"))
       end
 
       # Check current usage and remaining capacity
@@ -403,9 +403,13 @@ module PricingPlans
           end
         end
         upgrade_message ||= if highlighted_plan
-          "Your current plan (#{current_plan_name}) doesn't allow you to #{feature_human}. Please upgrade to #{highlighted_plan.name} or higher to access #{feature_human}."
+          I18n.t("pricing_plans.feature_denied.with_upgrade",
+            current_plan: current_plan_name, feature: feature_human, upgrade_plan: highlighted_plan.name,
+            default: "Your current plan (#{current_plan_name}) doesn't allow you to #{feature_human}. Please upgrade to #{highlighted_plan.name} or higher to access #{feature_human}.")
         else
-          "#{feature_human} is not available on your current plan (#{current_plan_name})."
+          I18n.t("pricing_plans.feature_denied.without_upgrade",
+            feature: feature_human, current_plan: current_plan_name,
+            default: "#{feature_human} is not available on your current plan (#{current_plan_name}).")
         end
 
         raise FeatureDenied.new(upgrade_message, feature_key: feature_key, plan_owner: plan_owner)
@@ -440,7 +444,8 @@ module PricingPlans
       else
         remaining = limit_amount - current_usage - by
         metadata = build_metadata(plan_owner, limit_key, current_usage + by, limit_amount)
-        Result.within("#{remaining} #{limit_key.to_s.humanize.downcase} remaining", metadata: metadata)
+        resource_name = limit_key.to_s.humanize.downcase
+        Result.within(I18n.t("pricing_plans.controller.remaining", remaining: remaining, resource_name: resource_name, default: "#{remaining} #{resource_name} remaining"), metadata: metadata)
       end
     end
 
@@ -486,7 +491,7 @@ module PricingPlans
 
     def build_warning_message(limit_key, remaining, limit_amount)
       resource_name = limit_key.to_s.humanize.downcase
-      "You have #{remaining} #{resource_name} remaining out of #{limit_amount}"
+      I18n.t("pricing_plans.controller.remaining_out_of", remaining: remaining, resource_name: resource_name, limit_amount: limit_amount, default: "You have #{remaining} #{resource_name} remaining out of #{limit_amount}")
     end
 
     def build_over_limit_message(limit_key, current_usage, limit_amount, severity)
@@ -510,10 +515,14 @@ module PricingPlans
         end
       end
 
-      base_message = "You've reached your limit of #{limit_amount} #{resource_name} (currently using #{current_usage})"
+      base_message = I18n.t("pricing_plans.controller.over_limit.base",
+        limit_amount: limit_amount, resource_name: resource_name, current_usage: current_usage,
+        default: "You've reached your limit of #{limit_amount} #{resource_name} (currently using #{current_usage})")
 
       return base_message unless highlighted_plan
-      upgrade_cta = "Upgrade to #{highlighted_plan.name} for higher limits"
+      upgrade_cta = I18n.t("pricing_plans.controller.over_limit.upgrade_cta",
+        plan_name: highlighted_plan.name,
+        default: "Upgrade to #{highlighted_plan.name} for higher limits")
       "#{base_message}. #{upgrade_cta}"
     end
 
@@ -537,28 +546,35 @@ module PricingPlans
       end
 
       time_remaining = time_ago_in_words(grace_ends_at)
-      base_message = "You've exceeded your limit of #{limit_amount} #{resource_name}. " \
-                    "You have #{time_remaining} remaining in your grace period"
+      base_message = I18n.t("pricing_plans.controller.grace.base",
+        limit_amount: limit_amount, resource_name: resource_name, time_remaining: time_remaining,
+        default: "You've exceeded your limit of #{limit_amount} #{resource_name}. You have #{time_remaining} remaining in your grace period")
 
       return base_message unless highlighted_plan
-      upgrade_cta = "Upgrade to #{highlighted_plan.name} to avoid service interruption"
+      upgrade_cta = I18n.t("pricing_plans.controller.grace.upgrade_cta",
+        plan_name: highlighted_plan.name,
+        default: "Upgrade to #{highlighted_plan.name} to avoid service interruption")
       "#{base_message}. #{upgrade_cta}"
     end
 
     def time_ago_in_words(future_time)
-      return "no time" if future_time <= Time.current
+      return I18n.t("pricing_plans.time.no_time", default: "no time") if future_time <= Time.current
 
       distance = future_time - Time.current
 
       case distance
       when 0...60
-        "#{distance.round} seconds"
+        count = distance.round
+        I18n.t("pricing_plans.time.seconds", count: count, default: "#{count} seconds")
       when 60...3600
-        "#{(distance / 60).round} minutes"
+        count = (distance / 60).round
+        I18n.t("pricing_plans.time.minutes", count: count, default: "#{count} minutes")
       when 3600...86400
-        "#{(distance / 3600).round} hours"
+        count = (distance / 3600).round
+        I18n.t("pricing_plans.time.hours", count: count, default: "#{count} hours")
       else
-        "#{(distance / 86400).round} days"
+        count = (distance / 86400).round
+        I18n.t("pricing_plans.time.days", count: count, default: "#{count} days")
       end
     end
 

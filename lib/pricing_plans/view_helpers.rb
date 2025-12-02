@@ -37,7 +37,7 @@ module PricingPlans
 
       if current_plan && plan.key.to_sym == current_plan.key.to_sym
         disabled = true
-        text = "Current Plan"
+        text = I18n.t("pricing_plans.cta.current_plan", default: "Current Plan")
       end
 
       { text: text, url: url, method: :get, disabled: disabled, reason: reason }
